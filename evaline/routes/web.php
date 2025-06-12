@@ -3,15 +3,18 @@
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\StatsController;
 use App\Http\Controllers\WeaponController;
+use App\Http\Controllers\MatchController;
+use App\Http\Controllers\DashboardController;
 use Illuminate\Support\Facades\Route;
+use App\Models\Matches;
 
 Route::get('/', function () {
     return redirect('/register');
 });
 
-Route::get('/dashboard', function () {
-    return view('dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
+Route::get('/dashboard', [DashboardController::class, 'index'])
+    ->middleware(['auth', 'verified'])
+    ->name('dashboard');
 
 Route::get('/stats', [StatsController::class, 'show'])->middleware(['auth', 'verified'])->name('stats.joueur');
 
@@ -23,5 +26,8 @@ Route::middleware('auth')->group(function () {
 
 Route::get('/weapons', [WeaponController::class, 'index'])->name('weapons.index');
 Route::get('/weapons/{id}', [WeaponController::class, 'show'])->name('weapons.show');
+Route::get('/matches/create', [MatchController::class, 'create'])->name('matches.create');
+Route::post('/matches', [MatchController::class, 'store'])->name('matches.store');
+Route::post('/matches/{game}/join', [MatchController::class, 'join'])->name('matches.join');
 
 require __DIR__.'/auth.php';

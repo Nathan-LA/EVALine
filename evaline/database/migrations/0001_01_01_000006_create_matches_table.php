@@ -13,6 +13,7 @@ return new class extends Migration {
         Schema::create('matches', function (Blueprint $table) {
             $table->id();
             $table->string('map_name');
+            $table->string('mode')->default('ffa');
             $table->timestamp('started_at');
             $table->timestamp('ended_at')->nullable();
             $table->timestamps();

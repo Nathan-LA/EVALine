@@ -2,6 +2,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use App\Models\WeaponType;
 
 class Weapon extends Model
 {
@@ -13,6 +14,6 @@ class Weapon extends Model
 
     public function type()
     {
-        return $this->belongsTo(\App\Models\WeaponType::class, 'weapon_type_id');
+        return $this->belongsTo(WeaponType::class, 'weapon_type_id');
     }
 }
