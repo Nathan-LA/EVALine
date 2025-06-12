@@ -1,0 +1,43 @@
+Fonctionnement général du jeu :
+
+Match par équipe et Chacun pour soi
+
+Chaque partie se finit au bout de 10/15 min ou quand quelqu'un obtient 40 kills
+
+Les maps feront 150m sur 150m avec obstacles et bonus au sol
+
+un joueur se déplacera à 2m/s de base mais la vitesse sera influencé par l'arme que le joueur utilisera (peut-être qu'il y aura des classes qui influenceront aussi sur les stats), aura 100 PV de base, pourra se soigner à hauteur de 5 PV/S en restant immobile et en appuyant sur une touche, pourra sauter de 0.5m
+
+Types d'armes : 
+
+- Fusils de longue portée : Moins précis sans viser
+
+- Fusils à pompe : Portée max : 15m mais grosse déperdition
+
+- Fusils d'assaut
+
+- Armes de mêlée : Très courte portée mais tue un ennemi en 2 coups obligatoirement, 1 si de dos
+
+- Armes de poing
+
+Bonus (2 max par joueur, si un joueur ramasse un bonus en en ayant déjà 2, le bonus ramassé le plus antérieurement sera remplacé, chaque bonus dure 45 sec sauf indication contraire) : 
+
+- vitesse améliorée
+
+- précision améliorée
+
+- Dégâts de corps à corps améliorés
+
+- Soins de 50 PV
+
+- Regen de vie améliorée
+
+- Discrétion (bonus court)
+
+- Saut amélioré (sans perte de vélocité)
+
+- Balles traçantes
+
+- Balles étourdissantes (bonus court)
+
+- Dégâts généraux augmentés (bonus rare)
