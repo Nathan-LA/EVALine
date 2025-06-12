@@ -17,6 +17,7 @@ return new class extends Migration {
             $table->integer('deaths')->default(0);
             $table->integer('assists')->default(0);
             $table->integer('headshots')->default(0);
+            $table->integer('wins')->default(0);
             $table->integer('matches_played')->default(0);
             $table->float('accuracy')->default(0);
             $table->timestamps();

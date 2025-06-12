@@ -15,6 +15,12 @@
                     <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                         {{ __('Dashboard') }}
                     </x-nav-link>
+                    <x-nav-link :href="route('stats.joueur')" :active="request()->routeIs('stats.joueur')">
+                        {{ __('Mes stats') }}
+                    </x-nav-link>
+                    <x-nav-link :href="route('weapons.index')" :active="request()->routeIs('stats.joueur')">
+                        {{ __('Liste des armes') }}
+                    </x-nav-link>
                 </div>
             </div>
 
