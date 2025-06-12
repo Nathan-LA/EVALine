@@ -70,4 +70,11 @@ class MatchController extends Controller
     {
         return view('matches.create');
     }
+
+    public function show($gameId)
+    {
+        $game = \App\Models\Matches::findOrFail($gameId);
+        // Tu peux aussi charger les joueurs, etc.
+        return view('matches.show', compact('game'));
+    }
 }

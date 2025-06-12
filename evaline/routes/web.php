@@ -29,5 +29,6 @@ Route::get('/weapons/{id}', [WeaponController::class, 'show'])->name('weapons.sh
 Route::get('/matches/create', [MatchController::class, 'create'])->name('matches.create');
 Route::post('/matches', [MatchController::class, 'store'])->name('matches.store');
 Route::post('/matches/{game}/join', [MatchController::class, 'join'])->name('matches.join');
+Route::get('/matches/{game}', [MatchController::class, 'show'])->name('matches.show');
 
 require __DIR__.'/auth.php';
