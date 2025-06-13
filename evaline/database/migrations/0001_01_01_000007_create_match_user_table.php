@@ -17,6 +17,9 @@ return new class extends Migration {
             $table->integer('kills')->default(0);
             $table->integer('deaths')->default(0);
             $table->boolean('won')->default(false);
+            $table->float('x')->default(0);
+            $table->float('y')->default(0);
+            $table->float('z')->default(0);
             $table->timestamps();
         });
 
@@ -28,6 +31,9 @@ return new class extends Migration {
      */
     public function down(): void
     {
-        Schema::dropIfExists('match_user');
+        //Schema::dropIfExists('match_user');
+        Schema::table('match_user', function ($table) {
+        $table->dropColumn(['x', 'y', 'c']);
+    });
     }
 };

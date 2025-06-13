@@ -14,7 +14,9 @@ class MatchController extends Controller
 
         // Vérifie si le joueur est déjà inscrit
         if ($game->users()->where('user_id', $user->id)->exists()) {
-            return redirect()->back()->with('info', 'Vous êtes déjà dans cette partie.');
+            // Redirige vers la page de la partie si déjà inscrit
+            return redirect()->route('matches.show', $game->id)
+                ->with('info', 'Vous êtes déjà dans cette partie.');
         }
 
         $game->users()->attach($user->id, [
@@ -23,7 +25,9 @@ class MatchController extends Controller
             'won' => false,
         ]);
 
-        return redirect()->route('dashboard')->with('success', 'Vous avez rejoint la partie !');
+        // Redirige vers la page de la partie après inscription
+        return redirect()->route('matches.show', $game->id)
+            ->with('success', 'Vous avez rejoint la partie !');
     }
 
 

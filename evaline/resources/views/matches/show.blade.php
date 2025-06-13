@@ -15,28 +15,80 @@
         </div>
     </div>
 
-    <script>
-        // Exemple de rendu graphique simple
-        document.addEventListener('DOMContentLoaded', () => {
-            const canvas = document.getElementById('game-canvas');
-            const ctx = canvas.getContext('2d');
+    <div class="absolute top-4 left-4 z-10">
+        <a href="{{ route('dashboard') }}"
+            class="bg-red-600 text-white px-4 py-2 rounded shadow hover:bg-red-700 transition font-bold">
+            Quitter la partie
+        </a>
+    </div>
 
-            // Dessine la map (150x150m, échelle arbitraire)
+    <script>
+        // Position initiale du joueur (à adapter si tu veux charger depuis la BDD)
+        let player = {
+            x: 300,
+            y: 300,
+            z: 0, // hauteur initiale
+            radius: 15,
+            color: '#4ade80'
+        };
+
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
+
+        function draw() {
+            // Efface le canvas
             ctx.fillStyle = '#222';
             ctx.fillRect(0, 0, 600, 600);
 
-            // Exemple d'obstacles
+            // Obstacles (exemple)
             ctx.fillStyle = '#555';
             ctx.fillRect(100, 100, 80, 40);
             ctx.fillRect(300, 200, 60, 120);
 
-            // Exemple de joueur
-            ctx.fillStyle = '#4ade80';
+            // Joueur
+            ctx.fillStyle = player.color;
             ctx.beginPath();
-            ctx.arc(300, 300, 15, 0, 2 * Math.PI);
+            ctx.arc(player.x, player.y, player.radius, 0, 2 * Math.PI);
             ctx.fill();
+        }
 
-            // Ajoute d'autres éléments selon tes besoins
+        draw();
+
+        // Gestion du déplacement avec les flèches
+        document.addEventListener('keydown', function (e) {
+            let dx = 0, dy = 0;
+            const speed = 5; // pixels par déplacement
+
+            if (e.key === 'ArrowUp') dy = -speed;
+            if (e.key === 'ArrowDown') dy = speed;
+            if (e.key === 'ArrowLeft') dx = -speed;
+            if (e.key === 'ArrowRight') dx = speed;
+
+            if (e.key === 'z' || e.key === 'Z') dy = -speed;
+            if (e.key === 's' || e.key === 'S') dy = speed;
+            if (e.key === 'q' || e.key === 'Q') dx = -speed;
+            if (e.key === 'd' || e.key === 'D') dx = speed;
+
+            if (dx !== 0 || dy !== 0) {
+                // Met à jour la position locale
+                player.x = Math.max(player.radius, Math.min(600 - player.radius, player.x + dx));
+                player.y = Math.max(player.radius, Math.min(600 - player.radius, player.y + dy));
+                draw();
+
+                // Envoie la nouvelle position au serveur
+                fetch('/game/{{ $game->id }}/move', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ x: player.x, y: player.y, z: player.z })
+                })
+                    .then(res => res.json())
+                    .then(data => {
+                        // Optionnel : gérer la réponse du serveur
+                    });
+            }
         });
     </script>
 </x-app-layout>
