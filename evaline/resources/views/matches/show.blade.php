@@ -23,11 +23,10 @@
     </div>
 
     <script>
-        // Position initiale du joueur (à adapter si tu veux charger depuis la BDD)
         let player = {
             x: 300,
             y: 300,
-            z: 0, // hauteur initiale
+            z: 0,
             radius: 15,
             color: '#4ade80'
         };
@@ -36,41 +35,33 @@
         const ctx = canvas.getContext('2d');
 
         function draw() {
-            // Efface le canvas
             ctx.fillStyle = '#222';
             ctx.fillRect(0, 0, 600, 600);
 
-            // Obstacles (exemple)
             ctx.fillStyle = '#555';
             ctx.fillRect(100, 100, 80, 40);
             ctx.fillRect(300, 200, 60, 120);
 
-            // Joueur
             ctx.fillStyle = player.color;
             ctx.beginPath();
             ctx.arc(player.x, player.y, player.radius, 0, 2 * Math.PI);
             ctx.fill();
         }
 
-        draw();
+        // Gestion des touches pressées
+        const keys = {};
+        document.addEventListener('keydown', e => { keys[e.key.toLowerCase()] = true; });
+        document.addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
 
-        // Gestion du déplacement avec les flèches
-        document.addEventListener('keydown', function (e) {
+        function update() {
+            const speed = 5;
             let dx = 0, dy = 0;
-            const speed = 5; // pixels par déplacement
-
-            if (e.key === 'ArrowUp') dy = -speed;
-            if (e.key === 'ArrowDown') dy = speed;
-            if (e.key === 'ArrowLeft') dx = -speed;
-            if (e.key === 'ArrowRight') dx = speed;
-
-            if (e.key === 'z' || e.key === 'Z') dy = -speed;
-            if (e.key === 's' || e.key === 'S') dy = speed;
-            if (e.key === 'q' || e.key === 'Q') dx = -speed;
-            if (e.key === 'd' || e.key === 'D') dx = speed;
+            if (keys['arrowup'] || keys['z']) dy -= speed;
+            if (keys['arrowdown'] || keys['s']) dy += speed;
+            if (keys['arrowleft'] || keys['q']) dx -= speed;
+            if (keys['arrowright'] || keys['d']) dx += speed;
 
             if (dx !== 0 || dy !== 0) {
-                // Met à jour la position locale
                 player.x = Math.max(player.radius, Math.min(600 - player.radius, player.x + dx));
                 player.y = Math.max(player.radius, Math.min(600 - player.radius, player.y + dy));
                 draw();
@@ -83,12 +74,15 @@
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({ x: player.x, y: player.y, z: player.z })
-                })
-                    .then(res => res.json())
-                    .then(data => {
-                        // Optionnel : gérer la réponse du serveur
-                    });
+                });
+            } else {
+                draw();
             }
-        });
+
+            requestAnimationFrame(update);
+        }
+
+        draw();
+        update();
     </script>
 </x-app-layout>
