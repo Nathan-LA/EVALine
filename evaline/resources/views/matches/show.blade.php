@@ -1,88 +1,82 @@
 <x-app-layout>
-    <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
-            Partie sur {{ $game->map_name }}
-        </h2>
-    </x-slot>
+    <style>
+        html, body, #three-container {
+            width: 100vw;
+            height: 100vh;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+        #three-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 0;
+        }
+    </style>
 
-    <div class="max-w-4xl mx-auto mt-10 bg-gray-800 rounded-xl shadow-md p-8">
-        <h3 class="text-white mb-4">Rendu graphique de la partie (démo)</h3>
-        <canvas id="game-canvas" width="600" height="600" class="bg-gray-900 rounded shadow"></canvas>
-        <div class="mt-6 text-white">
-            <p>Mode : {{ $game->mode }}</p>
-            <p>Status : {{ $game->status }}</p>
-            <p>Début : {{ $game->started_at }}</p>
-        </div>
-    </div>
+    <div id="three-container"></div>
 
     <div class="absolute top-4 left-4 z-10">
         <a href="{{ route('dashboard') }}"
-            class="bg-red-600 text-white px-4 py-2 rounded shadow hover:bg-red-700 transition font-bold">
+           class="bg-red-600 text-white px-4 py-2 rounded shadow hover:bg-red-700 transition font-bold">
             Quitter la partie
         </a>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/three@0.154.0/build/three.min.js"></script>
     <script>
-        let player = {
-            x: 300,
-            y: 300,
-            z: 0,
-            radius: 15,
-            color: '#4ade80'
-        };
+        // Initialisation de la scène, caméra et renderer
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({antialias: true});
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setClearColor(0x222222);
+        document.getElementById('three-container').appendChild(renderer.domElement);
 
-        const canvas = document.getElementById('game-canvas');
-        const ctx = canvas.getContext('2d');
+        // Création du cube
+        const geometry = new THREE.BoxGeometry(1, 1, 1);
+        const material = new THREE.MeshNormalMaterial();
+        const cube = new THREE.Mesh(geometry, material);
+        scene.add(cube);
 
-        function draw() {
-            ctx.fillStyle = '#222';
-            ctx.fillRect(0, 0, 600, 600);
+        // Position de la caméra
+        camera.position.z = 3;
 
-            ctx.fillStyle = '#555';
-            ctx.fillRect(100, 100, 80, 40);
-            ctx.fillRect(300, 200, 60, 120);
+        // Position initiale du cube
+        cube.position.set(0, 0, 0);
 
-            ctx.fillStyle = player.color;
-            ctx.beginPath();
-            ctx.arc(player.x, player.y, player.radius, 0, 2 * Math.PI);
-            ctx.fill();
-        }
+        // Lumière ambiante (optionnelle)
+        const light = new THREE.AmbientLight(0xffffff, 0.8);
+        scene.add(light);
 
         // Gestion des touches pressées
         const keys = {};
         document.addEventListener('keydown', e => { keys[e.key.toLowerCase()] = true; });
         document.addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
 
-        function update() {
-            const speed = 5;
-            let dx = 0, dy = 0;
-            if (keys['arrowup'] || keys['z']) dy -= speed;
-            if (keys['arrowdown'] || keys['s']) dy += speed;
-            if (keys['arrowleft'] || keys['q']) dx -= speed;
-            if (keys['arrowright'] || keys['d']) dx += speed;
+        // Animation du cube
+        function animate() {
+            requestAnimationFrame(animate);
 
-            if (dx !== 0 || dy !== 0) {
-                player.x = Math.max(player.radius, Math.min(600 - player.radius, player.x + dx));
-                player.y = Math.max(player.radius, Math.min(600 - player.radius, player.y + dy));
-                draw();
+            // Déplacement avec ZQSD
+            const speed = 0.01;
+            if (keys['s']) cube.position.z -= speed;
+            if (keys['z']) cube.position.z += speed;
+            if (keys['d']) cube.position.x -= speed;
+            if (keys['q']) cube.position.x += speed;
 
-                // Envoie la nouvelle position au serveur
-                fetch('/game/{{ $game->id }}/move', {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ x: player.x, y: player.y, z: player.z })
-                });
-            } else {
-                draw();
-            }
-
-            requestAnimationFrame(update);
+            renderer.render(scene, camera);
         }
+        animate();
 
-        draw();
-        update();
+        // Redimensionnement dynamique
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
     </script>
 </x-app-layout>
