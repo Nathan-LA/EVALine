@@ -90,6 +90,36 @@ pane.addBinding(params, 'depth', { min: 1, max: 50, step: 1 });
 pane.addBinding(params, 'color');
 pane.addButton({ title: 'Ajouter un objet' }).on('click', params.add);
 
+pane.addButton({ title: 'Exporter en JSON' }).on('click', () => {
+    // Génère la liste des objets à exporter
+    const exportData = editableObjects.map(mesh => ({
+        type: 'box', // ou récupère le type si tu le stockes
+        geometry: {
+            type: 'box',
+            width: mesh.geometry.parameters.width,
+            height: mesh.geometry.parameters.height,
+            depth: mesh.geometry.parameters.depth
+        },
+        material: {
+            color: '#' + mesh.material.color.getHexString()
+        },
+        position: {
+            x: mesh.position.x,
+            y: mesh.position.y,
+            z: mesh.position.z
+        }
+        // Ajoute rotation, etc. si besoin
+    }));
+
+    // Affiche le JSON dans la console ou dans une popup
+    const json = JSON.stringify(exportData, null, 2);
+    console.log(json);
+    // Optionnel : copie dans le presse-papier
+    navigator.clipboard.writeText(json).then(() => {
+        alert('JSON copié dans le presse-papier !');
+    });
+});
+
 const raycaster = new THREE.Raycaster();
 const mouse = new THREE.Vector2();
 let selectedObject = null;
