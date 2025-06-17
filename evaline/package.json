@@ -19,6 +19,7 @@
         "vite": "^6.2.4"
     },
     "dependencies": {
+        "ammo.js": "^0.0.10",
         "cannon-es": "^0.20.0",
         "three": "^0.177.0"
     }
