@@ -1,0 +1,75 @@
+{
+    "tiles": {
+        "size": 5,
+        "pattern": [
+            {
+                "x": -25,
+                "z": -25,
+                "color": "#444444"
+            },
+            {
+                "x": -20,
+                "z": -25,
+                "color": "#666666"
+            }
+        ]
+    },
+    "objects": [
+        {
+            "type": "building",
+            "geometry": {
+                "type": "box",
+                "width": 8,
+                "height": 12,
+                "depth": 8
+            },
+            "material": {
+                "color": "#8888ff"
+            },
+            "position": {
+                "x": -15,
+                "y": 6,
+                "z": 15
+            }
+        },
+        {
+            "type": "building",
+            "geometry": {
+                "type": "box",
+                "width": 10,
+                "height": 14,
+                "depth": 6
+            },
+            "material": {
+                "color": "#aa5555"
+            },
+            "position": {
+                "x": 20,
+                "y": 7,
+                "z": -10
+            }
+        },
+        {
+            "type": "ramp",
+            "geometry": {
+                "type": "box",
+                "width": 2,
+                "height": 0.5,
+                "depth": 10
+            },
+            "material": {
+                "color": "#aaaaaa"
+            },
+            "position": {
+                "x": 25,
+                "y": 2,
+                "z": -10
+            },
+            "rotation": {
+                "x": -0.2,
+                "y": 0,
+                "z": 0
+            }
+        }
+    ]
+}

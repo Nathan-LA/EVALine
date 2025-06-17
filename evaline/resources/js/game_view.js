@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls.js';
+import { generateMapFromData } from './mapGenerator.js';
 
 // 1. Déclare la hitbox du joueur en haut du fichier
 const playerHitbox = {
@@ -20,14 +21,14 @@ document.getElementById('three-container').appendChild(renderer.domElement);
 const sceneWidth = 150;
 const sceneLength = 150;
 
-// Sol
+/*// Sol
 const floor = new THREE.Mesh(
     new THREE.PlaneGeometry(sceneWidth, sceneLength),
     new THREE.MeshStandardMaterial({ color: 0x444444 })
 );
 floor.rotation.x = -Math.PI / 2;
 floor.position.y = 0;
-scene.add(floor);
+scene.add(floor);*/
 
 // Murs extérieurs
 const wallMaterial = new THREE.MeshStandardMaterial({ color: 0x888888 });
@@ -53,33 +54,14 @@ const wallEast = new THREE.Mesh(new THREE.BoxGeometry(wallThickness, wallHeight,
 wallEast.position.set(wallLength / 2, wallHeight / 2, 0);
 scene.add(wallEast);
 
-// Obstacles (caisses, piliers)
-const boxMaterial = new THREE.MeshStandardMaterial({ color: 0x2266cc });
-const box1 = new THREE.Mesh(new THREE.BoxGeometry(2, 2, 2), boxMaterial);
-box1.position.set(5, 1, 5);
-scene.add(box1);
-
-const box2 = new THREE.Mesh(new THREE.BoxGeometry(2, 2, 2), boxMaterial);
-box2.position.set(-8, 1, -10);
-scene.add(box2);
 
 const colliders = [];
 
-// Création d'un bâtiment (exemple : un bloc de 8x12x8)
-const building = new THREE.Mesh(
-    new THREE.BoxGeometry(16, 12, 24),
-    new THREE.MeshStandardMaterial({color: 0x8888ff})
-);
-building.position.set(10, 6, -10); // x, hauteur/2, z (le centre du bloc est à y=6)
-scene.add(building);
-
-// Calcul et ajout de la bounding box pour la collision
-building.geometry.computeBoundingBox();
-building.updateMatrixWorld();
-colliders.push({
-    mesh: building,
-    box: building.geometry.boundingBox.clone().applyMatrix4(building.matrixWorld)
-});
+fetch('/js/maps/map2.json')
+    .then(res => res.json())
+    .then(data => {
+        generateMapFromData(scene, colliders, data);
+    });
 
 // Lumière
 const light = new THREE.DirectionalLight(0xffffff, 1);
@@ -159,14 +141,6 @@ function getPlayerBox(position) {
         )
     );
 }
-
-// Crée un tableau de bounding boxes pour les collisions
-[wallNorth, wallSouth, wallEast, wallWest, box1, box2].forEach(obj => {
-    obj.geometry.computeBoundingBox();
-    const box = obj.geometry.boundingBox.clone();
-    box.applyMatrix4(obj.matrixWorld);
-    colliders.push({ mesh: obj, box: box });
-});
 
 function animate() {
     requestAnimationFrame(animate);

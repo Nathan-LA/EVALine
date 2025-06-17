@@ -1,0 +1,80 @@
+{
+    "tiles": {
+        "size": 5,
+        "pattern": [
+            {
+                "x": -25,
+                "z": -25,
+                "color": "#444444"
+            },
+            {
+                "x": -20,
+                "z": -25,
+                "color": "#666666"
+            }
+        ]
+    },
+    "objects": [
+        {
+            "type": "building",
+            "geometry": {
+                "type": "box",
+                "width": 16,
+                "height": 12,
+                "depth": 24
+            },
+            "material": {
+                "color": "#8888ff"
+            },
+            "position": {
+                "x": 10,
+                "y": 6,
+                "z": -10
+            }
+        },
+        {
+            "type": "box1",
+            "geometry": {
+                "type": "box",
+                "width": 2,
+                "height": 2,
+                "depth": 2
+            },
+            "material": {
+                "color": "#aaaaaa"
+            },
+            "position": {
+                "x": 5,
+                "y": 1,
+                "z": 5
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        },
+        {
+            "type": "box2",
+            "geometry": {
+                "type": "box",
+                "width": 2,
+                "height": 2,
+                "depth": 2
+            },
+            "material": {
+                "color": "#aaaaaa"
+            },
+            "position": {
+                "x": -8,
+                "y": 1,
+                "z": -10
+            },
+            "rotation": {
+                "x": 0,
+                "y": 0,
+                "z": 0
+            }
+        }
+    ]
+}
