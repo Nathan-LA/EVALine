@@ -16,7 +16,7 @@
     },
     "objects": [
         {
-            "type": "building",
+            "type": "building1",
             "geometry": {
                 "type": "box",
                 "width": 8,
@@ -33,7 +33,7 @@
             }
         },
         {
-            "type": "building",
+            "type": "building2",
             "geometry": {
                 "type": "box",
                 "width": 10,
@@ -70,6 +70,188 @@
                 "y": 0,
                 "z": 0
             }
+        }
+    ],
+    "buildings": [
+        {
+            "name": "maison1",
+            "objects": [
+                {
+                    "type": "floor",
+                    "geometry": {
+                        "type": "box",
+                        "width": 10,
+                        "height": 0.3,
+                        "depth": 8
+                    },
+                    "material": {
+                        "color": "#888888"
+                    },
+                    "position": {
+                        "x": 0,
+                        "y": 0.15,
+                        "z": 0
+                    }
+                },
+                {
+                    "type": "floor",
+                    "geometry": {
+                        "type": "box",
+                        "width": 10,
+                        "height": 0.3,
+                        "depth": 8
+                    },
+                    "material": {
+                        "color": "#888888"
+                    },
+                    "position": {
+                        "x": 0,
+                        "y": 3.15,
+                        "z": 0
+                    }
+                },
+                {
+                    "type": "roof",
+                    "geometry": {
+                        "type": "box",
+                        "width": 10,
+                        "height": 0.3,
+                        "depth": 8
+                    },
+                    "material": {
+                        "color": "#888888"
+                    },
+                    "position": {
+                        "x": 0,
+                        "y": 6.15,
+                        "z": 0
+                    }
+                },
+                {
+                    "type": "wall",
+                    "geometry": {
+                        "type": "box",
+                        "width": 10,
+                        "height": 6,
+                        "depth": 0.3
+                    },
+                    "material": {
+                        "color": "#4444aa"
+                    },
+                    "position": {
+                        "x": 0,
+                        "y": 3,
+                        "z": -4.15
+                    }
+                },
+                {
+                    "type": "wall",
+                    "geometry": {
+                        "type": "box",
+                        "width": 4,
+                        "height": 6,
+                        "depth": 0.3
+                    },
+                    "material": {
+                        "color": "#4444aa"
+                    },
+                    "position": {
+                        "x": -3,
+                        "y": 3,
+                        "z": 3.85
+                    }
+                },
+                {
+                    "type": "wall",
+                    "geometry": {
+                        "type": "box",
+                        "width": 4,
+                        "height": 6,
+                        "depth": 0.3
+                    },
+                    "material": {
+                        "color": "#4444aa"
+                    },
+                    "position": {
+                        "x": 3,
+                        "y": 3,
+                        "z": 3.85
+                    }
+                },
+                {
+                    "type": "wall",
+                    "geometry": {
+                        "type": "box",
+                        "width": 0.3,
+                        "height": 6,
+                        "depth": 8
+                    },
+                    "material": {
+                        "color": "#4444aa"
+                    },
+                    "position": {
+                        "x": -5.15,
+                        "y": 3,
+                        "z": 0
+                    }
+                },
+                {
+                    "type": "wall",
+                    "geometry": {
+                        "type": "box",
+                        "width": 0.3,
+                        "height": 6,
+                        "depth": 8
+                    },
+                    "material": {
+                        "color": "#4444aa"
+                    },
+                    "position": {
+                        "x": 4.85,
+                        "y": 3,
+                        "z": 0
+                    }
+                },
+                {
+                    "type": "window",
+                    "geometry": {
+                        "type": "box",
+                        "width": 2,
+                        "height": 1,
+                        "depth": 0.1
+                    },
+                    "material": {
+                        "color": "#99ccff"
+                    },
+                    "position": {
+                        "x": 0,
+                        "y": 4.5,
+                        "z": 3.8
+                    }
+                },
+                {
+                    "type": "stairs",
+                    "geometry": {
+                        "type": "box",
+                        "width": 2,
+                        "height": 0.5,
+                        "depth": 4
+                    },
+                    "material": {
+                        "color": "#aaaaaa"
+                    },
+                    "position": {
+                        "x": -2,
+                        "y": 1.5,
+                        "z": 0
+                    },
+                    "rotation": {
+                        "x": -0.35,
+                        "y": 0,
+                        "z": 0
+                    }
+                }
+            ]
         }
     ]
 }

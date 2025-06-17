@@ -16,7 +16,7 @@
     },
     "objects": [
         {
-            "type": "building",
+            "type": "building1",
             "geometry": {
                 "type": "box",
                 "width": 16,

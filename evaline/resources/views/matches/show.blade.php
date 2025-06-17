@@ -22,8 +22,7 @@
 
     <div id="three-container"></div>
 
-    <div id="crosshair"
-         style="
+    <div id="crosshair" style="
         position: fixed;
         top: 50%;
         left: 50%;

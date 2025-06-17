@@ -128,6 +128,22 @@ addWall(0, 5, sceneLength / 2, sceneLength, 10, 0.5); // sud
 addWall(-sceneWidth / 2, 5, 0, 0.5, 10, sceneWidth); // ouest
 addWall(sceneWidth / 2, 5, 0, 0.5, 10, sceneWidth); // est
 
+// Mur visuel (Three.js)
+function addWallMesh(x, y, z, sx, sy, sz, color = 0x888888) {
+    const mesh = new THREE.Mesh(
+        new THREE.BoxGeometry(sx, sy, sz),
+        new THREE.MeshStandardMaterial({ color: color }) // <-- change la couleur ici
+    );
+    mesh.position.set(x, y, z);
+    scene.add(mesh);
+}
+
+// Ajoute les 4 murs visuels avec la couleur de ton choix
+addWallMesh(0, 5, -sceneLength / 2, sceneLength, 10, 0.5, 0x3366cc); // nord
+addWallMesh(0, 5, sceneLength / 2, sceneLength, 10, 0.5, 0x3366cc); // sud
+addWallMesh(-sceneWidth / 2, 5, 0, 0.5, 10, sceneWidth, 0x3366cc); // ouest
+addWallMesh(sceneWidth / 2, 5, 0, 0.5, 10, sceneWidth, 0x3366cc); // est
+
 // 4. Génère la carte et ajoute les objets physiques
 fetch('/js/maps/map2.json')
     .then(res => res.json())
@@ -172,7 +188,7 @@ fetch('/js/maps/map2.json')
         const playerShape = new Ammo.btCapsuleShape(playerRadius, playerHeight - 2 * playerRadius);
         const playerTransform = new Ammo.btTransform();
         playerTransform.setIdentity();
-        playerTransform.setOrigin(new Ammo.btVector3(0, playerHeight / 2 + 2, 10));
+        playerTransform.setOrigin(new Ammo.btVector3(0, playerHeight / 2 + 2, 0));
         const playerMass = 1;
         const playerInertia = new Ammo.btVector3(0, 0, 0);
         playerShape.calculateLocalInertia(playerMass, playerInertia);
@@ -271,6 +287,5 @@ function animate() {
 window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
- 
     renderer.setSize(window.innerWidth, window.innerHeight);
 });

@@ -15,33 +15,69 @@ export function generateMapFromData(scene, colliders, mapData) {
         }
     }
 
-    // Génère les objets
-    for (const obj of mapData.objects) {
-        let geometry;
-        if (obj.geometry.type === "box") {
-            geometry = new THREE.BoxGeometry(obj.geometry.width, obj.geometry.height, obj.geometry.depth);
+    // Génère les objets "hors bâtiment"
+    if (mapData.objects) {
+        for (const obj of mapData.objects) {
+            let geometry;
+            if (obj.geometry.type === "box") {
+                geometry = new THREE.BoxGeometry(obj.geometry.width, obj.geometry.height, obj.geometry.depth);
+            }
+            // Ajoute d'autres types si besoin
+
+            const material = new THREE.MeshStandardMaterial({color: obj.material.color});
+            const mesh = new THREE.Mesh(geometry, material);
+
+            mesh.position.set(obj.position.x, obj.position.y, obj.position.z);
+
+            if (obj.rotation) {
+                mesh.rotation.set(
+                    obj.rotation.x || 0,
+                    obj.rotation.y || 0,
+                    obj.rotation.z || 0
+                );
+            }
+
+            scene.add(mesh);
+            mesh.geometry.computeBoundingBox();
+            mesh.updateMatrixWorld();
+            colliders.push({
+                mesh: mesh,
+                box: mesh.geometry.boundingBox.clone().applyMatrix4(mesh.matrixWorld)
+            });
         }
-        // Ajoute d'autres types si besoin
+    }
 
-        const material = new THREE.MeshStandardMaterial({color: obj.material.color});
-        const mesh = new THREE.Mesh(geometry, material);
+    // Génère les bâtiments
+    if (mapData.buildings) {
+        for (const building of mapData.buildings) {
+            for (const obj of building.objects) {
+                let geometry;
+                if (obj.geometry.type === "box") {
+                    geometry = new THREE.BoxGeometry(obj.geometry.width, obj.geometry.height, obj.geometry.depth);
+                }
+                // Ajoute d'autres types si besoin
 
-        mesh.position.set(obj.position.x, obj.position.y, obj.position.z);
+                const material = new THREE.MeshStandardMaterial({color: obj.material.color});
+                const mesh = new THREE.Mesh(geometry, material);
 
-        if (obj.rotation) {
-            mesh.rotation.set(
-                obj.rotation.x || 0,
-                obj.rotation.y || 0,
-                obj.rotation.z || 0
-            );
+                mesh.position.set(obj.position.x, obj.position.y, obj.position.z);
+
+                if (obj.rotation) {
+                    mesh.rotation.set(
+                        obj.rotation.x || 0,
+                        obj.rotation.y || 0,
+                        obj.rotation.z || 0
+                    );
+                }
+
+                scene.add(mesh);
+                mesh.geometry.computeBoundingBox();
+                mesh.updateMatrixWorld();
+                colliders.push({
+                    mesh: mesh,
+                    box: mesh.geometry.boundingBox.clone().applyMatrix4(mesh.matrixWorld)
+                });
+            }
         }
-
-        scene.add(mesh);
-        mesh.geometry.computeBoundingBox();
-        mesh.updateMatrixWorld();
-        colliders.push({
-            mesh: mesh,
-            box: mesh.geometry.boundingBox.clone().applyMatrix4(mesh.matrixWorld)
-        });
     }
 }
