@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls.js';
 import { generateMapFromData } from './mapGenerator.js';
+import { Pane } from 'tweakpane';
 import Ammo from 'ammo.js';
 
 // 1. Déclare la hitbox du joueur en haut du fichier
@@ -12,6 +13,8 @@ const playerHitbox = {
 let physicsWorld, tmpTrans, playerBody;
 let objectsAmmo = []; // Pour stocker les bodies Ammo.js des objets
 
+const editableObjects = []; // Ajoute chaque mesh créé ici
+
 // Initialisation de la scène, caméra et renderer
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -22,6 +25,147 @@ document.getElementById('three-container').appendChild(renderer.domElement);
 
 const sceneWidth = 150;
 const sceneLength = 150;
+
+let flyMode = true; // Passe à false pour désactiver le vol
+
+// Gridhelper pour visualiser le sol
+const gridHelper = new THREE.GridHelper(sceneWidth, sceneWidth / 2, 0x888888, 0x444444);
+scene.add(gridHelper);
+
+const params = {
+    type: 'box',
+    x: 0,
+    y: 1,
+    z: 0,
+    width: 5,
+    height: 5,
+    depth: 5,
+    color: '#ff8800',
+    add: () => {
+        // Crée un mesh Three.js
+        const mesh = new THREE.Mesh(
+            new THREE.BoxGeometry(params.width, params.height, params.depth),
+            new THREE.MeshStandardMaterial({ color: params.color })
+        );
+        mesh.position.set(params.x, params.y, params.z);
+        scene.add(mesh);
+        editableObjects.push(mesh);
+
+        // Ajoute aussi le collider physique
+        mesh.geometry.computeBoundingBox();
+        mesh.updateMatrixWorld(true);
+        const size = new THREE.Vector3();
+        mesh.geometry.boundingBox.getSize(size);
+        const center = new THREE.Vector3();
+        mesh.geometry.boundingBox.getCenter(center);
+        mesh.localToWorld(center);
+
+        const shape = new Ammo.btBoxShape(new Ammo.btVector3(size.x / 2, size.y / 2, size.z / 2));
+        const transform = new Ammo.btTransform();
+        transform.setIdentity();
+        transform.setOrigin(new Ammo.btVector3(center.x, center.y, center.z));
+        const quaternion = mesh.getWorldQuaternion(new THREE.Quaternion());
+        transform.setRotation(new Ammo.btQuaternion(quaternion.x, quaternion.y, quaternion.z, quaternion.w));
+        const mass = 0;
+        const localInertia = new Ammo.btVector3(0, 0, 0);
+        const motionState = new Ammo.btDefaultMotionState(transform);
+        const rbInfo = new Ammo.btRigidBodyConstructionInfo(mass, motionState, shape, localInertia);
+        const body = new Ammo.btRigidBody(rbInfo);
+        physicsWorld.addRigidBody(body);
+        objectsAmmo.push(body);
+
+        // Optionnel : ajoute à colliders si tu veux l’exporter plus tard
+        colliders.push({ mesh, box: mesh.geometry.boundingBox.clone().applyMatrix4(mesh.matrixWorld) });
+    }
+};
+
+const pane = new Pane();
+pane.addBinding(params, 'type', { options: { box: 'box' } });
+pane.addBinding(params, 'x', { min: -sceneWidth / 2, max: sceneWidth / 2, step: 1 });
+pane.addBinding(params, 'y', { min: 0, max: 100, step: 1 });
+pane.addBinding(params, 'z', { min: -sceneLength / 2, max: sceneLength / 2, step: 1 });
+pane.addBinding(params, 'width', { min: 1, max: 50, step: 1 });
+pane.addBinding(params, 'height', { min: 1, max: 100, step: 1 });
+pane.addBinding(params, 'depth', { min: 1, max: 50, step: 1 });
+pane.addBinding(params, 'color');
+pane.addButton({ title: 'Ajouter un objet' }).on('click', params.add);
+
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+let selectedObject = null;
+
+renderer.domElement.addEventListener('pointerdown', (event) => {
+    // Calcul des coordonnées normalisées de la souris
+    const rect = renderer.domElement.getBoundingClientRect();
+    mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+    raycaster.setFromCamera(mouse, camera);
+    const intersects = raycaster.intersectObjects(editableObjects);
+    if (intersects.length > 0) {
+        selectedObject = intersects[0].object;
+        showEditPane(selectedObject);
+    }
+});
+
+let editPane = null;
+
+function showEditPane(mesh) {
+    // Détruit l'ancien panneau si besoin
+    if (editPane) {
+        editPane.dispose();
+    }
+    editPane = new Pane({ title: 'Modifier l\'objet' });
+
+    editPane.element.style.position = 'fixed';
+    editPane.element.style.top = '230px';
+    editPane.element.style.right = '0px';
+    editPane.element.style.zIndex = '1001';
+
+    // Paramètres liés au mesh
+    const params = {
+        x: mesh.position.x,
+        y: mesh.position.y,
+        z: mesh.position.z,
+        width: mesh.geometry.parameters.width || 1,
+        height: mesh.geometry.parameters.height || 1,
+        depth: mesh.geometry.parameters.depth || 1,
+        color: '#' + mesh.material.color.getHexString()
+    };
+
+    // Position
+    editPane.addBinding(params, 'x', { min: -100, max: 100, step: 0.1 }).on('change', ev => {
+        mesh.position.x = ev.value;
+    });
+    editPane.addBinding(params, 'y', { min: 0, max: 100, step: 0.1 }).on('change', ev => {
+        mesh.position.y = ev.value;
+    });
+    editPane.addBinding(params, 'z', { min: -100, max: 100, step: 0.1 }).on('change', ev => {
+        mesh.position.z = ev.value;
+    });
+
+    // Taille (recrée la géométrie à la volée)
+    editPane.addBinding(params, 'width', { min: 0.1, max: 50, step: 0.1 }).on('change', ev => {
+        updateMeshGeometry(mesh, params);
+    });
+    editPane.addBinding(params, 'height', { min: 0.1, max: 50, step: 0.1 }).on('change', ev => {
+        updateMeshGeometry(mesh, params);
+    });
+    editPane.addBinding(params, 'depth', { min: 0.1, max: 50, step: 0.1 }).on('change', ev => {
+        updateMeshGeometry(mesh, params);
+    });
+
+    // Couleur
+    editPane.addBinding(params, 'color').on('change', ev => {
+        mesh.material.color.set(ev.value);
+    });
+}
+
+// Fonction utilitaire pour changer la géométrie du mesh
+function updateMeshGeometry(mesh, params) {
+    mesh.geometry.dispose();
+    mesh.geometry = new THREE.BoxGeometry(params.width, params.height, params.depth);
+}
 
 // Lumière
 const light = new THREE.DirectionalLight(0xffffff, 1);
@@ -71,8 +215,10 @@ controls.addEventListener('lock', () => {
     document.getElementById('crosshair').style.display = 'flex';
 });
 controls.addEventListener('unlock', () => {
-    blocker.style.display = 'flex';
-    document.getElementById('crosshair').style.display = 'none';
+    if (!editMode) {
+        blocker.style.display = 'flex';
+        document.getElementById('crosshair').style.display = 'none';
+    }
 });
 
 // Gestion des touches pressées pour déplacement FPS
@@ -202,7 +348,48 @@ fetch('/js/maps/map2.json')
         animate();
     });
 
-// --- ANIMATION & CONTROLES FPS ---
+window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+let editMode = false;
+
+function updateEditModeUI() {
+    if (editMode) {
+        pane.element.style.opacity = '1';
+        pane.element.style.pointerEvents = 'auto';
+    } else {
+        pane.element.style.opacity = '0.5';
+        pane.element.style.pointerEvents = 'none';
+    }
+}
+
+// --- GESTION DU VOL ---
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'f') {
+        flyMode = !flyMode;
+        if (flyMode) {
+            // Active le vol : place le joueur à une hauteur sûre
+            playerBody.getMotionState().getWorldTransform(tmpTrans);
+            const pos = tmpTrans.getOrigin();
+            pos.setY(10);
+            tmpTrans.setOrigin(pos);
+            playerBody.setWorldTransform(tmpTrans);
+        }
+    }
+    if (e.key.toLowerCase() === 'e') {
+        editMode = !editMode;
+        if (editMode) {
+            controls.unlock(); // Désactive le contrôle FPS, souris libre pour Tweakpane
+        } else {
+            controls.lock(); // Reprend le contrôle FPS
+        }
+        updateEditModeUI();
+    }
+});
+
 function animate() {
     requestAnimationFrame(animate);
 
@@ -218,74 +405,103 @@ function animate() {
         let speed = 5;
         if (keys['shift']) speed = 10;
 
-        // Direction du mouvement
-        let moveDir = new THREE.Vector3();
-        if (controls.isLocked) {
-            if (keys['s']) moveDir.z -= 1;
-            if (keys['z']) moveDir.z += 1;
-            if (keys['q']) moveDir.x -= 1;
-            if (keys['d']) moveDir.x += 1;
-            moveDir.normalize();
+        if (flyMode) {
+            // Mode vol : déplace la caméra directement dans l'espace 3D
+            let moveDir = new THREE.Vector3();
+            if (controls.isLocked) {
+                if (keys['s']) moveDir.z -= 1;
+                if (keys['z']) moveDir.z += 1;
+                if (keys['q']) moveDir.x -= 1;
+                if (keys['d']) moveDir.x += 1;
+                if (keys[' ']) moveDir.y += 1; // Espace pour monter
+                moveDir.normalize();
 
-            // Repère caméra
-            const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion).setY(0).normalize();
-            const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion).setY(0).normalize();
-            const move = new THREE.Vector3();
-            move.addScaledVector(forward, moveDir.z);
-            move.addScaledVector(right, moveDir.x);
+                // Repère caméra
+                const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
+                const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
+                const up = new THREE.Vector3(0, 1, 0);
 
-            // Applique la vélocité horizontale
-            const velocity = playerBody.getLinearVelocity();
-            if (moveDir.lengthSq() > 0) {
-                playerBody.activate(); // <-- Réveille le corps physique
-                velocity.setX(move.x * speed);
-                velocity.setZ(move.z * speed);
-                playerBody.setLinearVelocity(velocity);
-            } else if (Math.abs(velocity.x()) > 0.01 || Math.abs(velocity.z()) > 0.01) {
-                playerBody.activate(); // <-- Réveille aussi si on stoppe net
-                velocity.setX(0);
-                velocity.setZ(0);
-                playerBody.setLinearVelocity(velocity);
+                const move = new THREE.Vector3();
+                move.addScaledVector(forward, moveDir.z);
+                move.addScaledVector(right, moveDir.x);
+                move.addScaledVector(up, moveDir.y);
+
+                camera.position.addScaledVector(move, speed * delta);
+                // Optionnel : synchronise le corps physique du joueur
+                if (playerBody) {
+                    playerBody.getMotionState().getWorldTransform(tmpTrans);
+                    tmpTrans.setOrigin(new Ammo.btVector3(camera.position.x, camera.position.y, camera.position.z));
+                    playerBody.setWorldTransform(tmpTrans);
+                }
+            }
+        } else {
+            // ... ton code habituel de déplacement physique ...
+            let moveDir = new THREE.Vector3();
+            if (controls.isLocked) {
+                if (keys['s']) moveDir.z -= 1;
+                if (keys['z']) moveDir.z += 1;
+                if (keys['q']) moveDir.x -= 1;
+                if (keys['d']) moveDir.x += 1;
+                moveDir.normalize();
+
+                // Repère caméra
+                const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion).setY(0).normalize();
+                const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion).setY(0).normalize();
+                const move = new THREE.Vector3();
+                move.addScaledVector(forward, moveDir.z);
+                move.addScaledVector(right, moveDir.x);
+
+                // Applique la vélocité horizontale
+                const velocity = playerBody.getLinearVelocity();
+                if (moveDir.lengthSq() > 0) {
+                    playerBody.activate(); // <-- Réveille le corps physique
+                    velocity.setX(move.x * speed);
+                    velocity.setZ(move.z * speed);
+                    playerBody.setLinearVelocity(velocity);
+                } else if (Math.abs(velocity.x()) > 0.01 || Math.abs(velocity.z()) > 0.01) {
+                    playerBody.activate(); // <-- Réveille aussi si on stoppe net
+                    velocity.setX(0);
+                    velocity.setZ(0);
+                    playerBody.setLinearVelocity(velocity);
+                }
+
+                // Saut
+                if (keys[' '] && jumpsLeft > 0) {
+                    playerBody.activate(); // <-- Réveille le corps physique
+                    const v = playerBody.getLinearVelocity();
+                    v.setY(jumpSpeed);
+                    playerBody.setLinearVelocity(v);
+                    jumpsLeft--;
+                    keys[' '] = false;
+                }
             }
 
-            // Saut
-            if (keys[' '] && jumpsLeft > 0) {
-                playerBody.activate(); // <-- Réveille le corps physique
-                const v = playerBody.getLinearVelocity();
-                v.setY(jumpSpeed);
-                playerBody.setLinearVelocity(v);
-                jumpsLeft--;
-                keys[' '] = false;
+            // --- Synchronisation caméra <-> corps physique ---
+            playerBody.getMotionState().getWorldTransform(tmpTrans);
+            const pos = tmpTrans.getOrigin();
+            camera.position.set(pos.x(), pos.y() + playerHitbox.height / 2, pos.z());
+
+            // --- Gestion du saut (détection du sol) ---
+            // Raycast Ammo.js vers le bas pour savoir si on touche le sol
+            const rayStart = new Ammo.btVector3(pos.x(), pos.y(), pos.z());
+            const rayEnd = new Ammo.btVector3(pos.x(), pos.y() - playerHitbox.height / 2 - 0.2, pos.z());
+            const rayCallback = new Ammo.ClosestRayResultCallback(rayStart, rayEnd);
+            physicsWorld.rayTest(rayStart, rayEnd, rayCallback);
+            canJump = rayCallback.hasHit();
+
+            if (canJump) {
+                jumpsLeft = maxJumps;
             }
+
+            Ammo.destroy(rayStart);
+            Ammo.destroy(rayEnd);
+            Ammo.destroy(rayCallback);
         }
-
-        // --- Synchronisation caméra <-> corps physique ---
-        playerBody.getMotionState().getWorldTransform(tmpTrans);
-        const pos = tmpTrans.getOrigin();
-        camera.position.set(pos.x(), pos.y() + playerHitbox.height / 2, pos.z());
-
-        // --- Gestion du saut (détection du sol) ---
-        // Raycast Ammo.js vers le bas pour savoir si on touche le sol
-        const rayStart = new Ammo.btVector3(pos.x(), pos.y(), pos.z());
-        const rayEnd = new Ammo.btVector3(pos.x(), pos.y() - playerHitbox.height / 2 - 0.2, pos.z());
-        const rayCallback = new Ammo.ClosestRayResultCallback(rayStart, rayEnd);
-        physicsWorld.rayTest(rayStart, rayEnd, rayCallback);
-        canJump = rayCallback.hasHit();
-
-        if (canJump) {
-            jumpsLeft = maxJumps;
-        }
-
-        Ammo.destroy(rayStart);
-        Ammo.destroy(rayEnd);
-        Ammo.destroy(rayCallback);
     }
+
+    const camCoords = document.getElementById('camera-coords');
+camCoords.textContent =
+    `x: ${camera.position.x.toFixed(2)}  y: ${camera.position.y.toFixed(2)}  z: ${camera.position.z.toFixed(2)}`;
 
     renderer.render(scene, camera);
 }
-
-window.addEventListener('resize', () => {
-    camera.aspect = window.innerWidth / window.innerHeight;
-    camera.updateProjectionMatrix();
-    renderer.setSize(window.innerWidth, window.innerHeight);
-});

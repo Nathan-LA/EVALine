@@ -56,4 +56,20 @@
         border-radius: 1px;
     "></div>
     </div>
+
+    <div id="camera-coords" style="
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    background: rgba(30,30,30,0.8);
+    color: #fff;
+    font-family: monospace;
+    font-size: 1rem;
+    padding: 6px 12px;
+    border-radius: 6px;
+    z-index: 1000;
+    pointer-events: none;
+">
+    x: 0&nbsp;&nbsp;y: 0&nbsp;&nbsp;z: 0
+</div>
 </x-app-layout>
