@@ -15,9 +15,14 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setClearColor(0x222222);
 document.getElementById('three-container').appendChild(renderer.domElement);
 
+// Dimensions de la scène
+
+const sceneWidth = 150;
+const sceneLength = 150;
+
 // Sol
 const floor = new THREE.Mesh(
-    new THREE.PlaneGeometry(50, 50),
+    new THREE.PlaneGeometry(sceneWidth, sceneLength),
     new THREE.MeshStandardMaterial({ color: 0x444444 })
 );
 floor.rotation.x = -Math.PI / 2;
@@ -26,7 +31,7 @@ scene.add(floor);
 
 // Murs extérieurs
 const wallMaterial = new THREE.MeshStandardMaterial({ color: 0x888888 });
-const wallHeight = 3, wallThickness = 0.5, wallLength = 50;
+const wallHeight = 10, wallThickness = 0.5, wallLength = sceneLength;
 
 // Mur nord
 const wallNorth = new THREE.Mesh(new THREE.BoxGeometry(wallLength, wallHeight, wallThickness), wallMaterial);
@@ -58,10 +63,23 @@ const box2 = new THREE.Mesh(new THREE.BoxGeometry(2, 2, 2), boxMaterial);
 box2.position.set(-8, 1, -10);
 scene.add(box2);
 
-const pillarMaterial = new THREE.MeshStandardMaterial({ color: 0xcc6622 });
-const pillar = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 4, 16), pillarMaterial);
-pillar.position.set(10, 2, -5);
-scene.add(pillar);
+const colliders = [];
+
+// Création d'un bâtiment (exemple : un bloc de 8x12x8)
+const building = new THREE.Mesh(
+    new THREE.BoxGeometry(16, 12, 24),
+    new THREE.MeshStandardMaterial({color: 0x8888ff})
+);
+building.position.set(10, 6, -10); // x, hauteur/2, z (le centre du bloc est à y=6)
+scene.add(building);
+
+// Calcul et ajout de la bounding box pour la collision
+building.geometry.computeBoundingBox();
+building.updateMatrixWorld();
+colliders.push({
+    mesh: building,
+    box: building.geometry.boundingBox.clone().applyMatrix4(building.matrixWorld)
+});
 
 // Lumière
 const light = new THREE.DirectionalLight(0xffffff, 1);
@@ -143,8 +161,7 @@ function getPlayerBox(position) {
 }
 
 // Crée un tableau de bounding boxes pour les collisions
-const colliders = [];
-[wallNorth, wallSouth, wallEast, wallWest, box1, box2, pillar].forEach(obj => {
+[wallNorth, wallSouth, wallEast, wallWest, box1, box2].forEach(obj => {
     obj.geometry.computeBoundingBox();
     const box = obj.geometry.boundingBox.clone();
     box.applyMatrix4(obj.matrixWorld);
