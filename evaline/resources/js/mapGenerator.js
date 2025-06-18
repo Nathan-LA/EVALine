@@ -1,37 +1,5 @@
 import * as THREE from 'three';
-
-export function createMeshFromJson(obj) {
-    let geometry;
-    if (obj.geometry.type === "box") {
-        geometry = new THREE.BoxGeometry(obj.geometry.width, obj.geometry.height, obj.geometry.depth);
-    } else if (obj.geometry.type === "sphere") {
-        geometry = new THREE.SphereGeometry(obj.geometry.width / 2, 32, 16);
-    } else if (obj.geometry.type === "cylinder") {
-        geometry = new THREE.CylinderGeometry(obj.geometry.width / 2, obj.geometry.width / 2, obj.geometry.height, 32);
-    } else {
-        geometry = new THREE.BoxGeometry(1, 1, 1);
-    }
-    // Ajoute d'autres types ici si besoin
-
-    const material = new THREE.MeshStandardMaterial({color: obj.material.color});
-    const mesh = new THREE.Mesh(geometry, material);
-
-    mesh.position.set(obj.position.x, obj.position.y, obj.position.z);
-
-    if (obj.rotation) {
-        mesh.rotation.set(
-            obj.rotation.x || 0,
-            obj.rotation.y || 0,
-            obj.rotation.z || 0
-        );
-    }
-
-    mesh.userData.jsonRef = obj; // Pour édition/export
-    mesh.geometry.computeBoundingBox();
-    mesh.updateMatrixWorld();
-
-    return mesh;
-}
+import { createMeshFromJson } from './objects.js';
 
 export function generateMapFromData(scene, colliders, mapData, editableObjects = []) {
     // Génère le sol (pattern)
