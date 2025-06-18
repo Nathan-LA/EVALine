@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls.js';
-import { generateMapFromData } from './mapGenerator.js';
+import { generateMapFromData, createMeshFromJson } from './mapGenerator.js';
 import { Pane } from 'tweakpane';
 import Ammo from 'ammo.js';
 
@@ -9,6 +9,8 @@ const playerHitbox = {
     radius: 0.5,
     height: 1.8
 };
+
+let mapData = null;
 
 let physicsWorld, tmpTrans, playerBody;
 let objectsAmmo = []; // Pour stocker les bodies Ammo.js des objets
@@ -35,12 +37,12 @@ scene.add(gridHelper);
 const params = {
     type: 'box',
     x: 0,
-    y: 1,
+    y: 2,
     z: 0,
     width: 5,
     height: 5,
     depth: 5,
-    color: '#ff8800',
+    color: '#ffffff',
     add: () => {
         // Crée un mesh Three.js
         const mesh = new THREE.Mesh(
@@ -80,7 +82,7 @@ const params = {
 };
 
 const pane = new Pane();
-pane.addBinding(params, 'type', { options: { box: 'box' } });
+pane.addBinding(params, 'type', { options: { box: 'box', sphere: 'sphere', cylinder: 'cylinder' } });
 pane.addBinding(params, 'x', { min: -sceneWidth / 2, max: sceneWidth / 2, step: 1 });
 pane.addBinding(params, 'y', { min: 0, max: 100, step: 1 });
 pane.addBinding(params, 'z', { min: -sceneLength / 2, max: sceneLength / 2, step: 1 });
@@ -91,9 +93,8 @@ pane.addBinding(params, 'color');
 pane.addButton({ title: 'Ajouter un objet' }).on('click', params.add);
 
 pane.addButton({ title: 'Exporter en JSON' }).on('click', () => {
-    // Génère la liste des objets à exporter
     const exportData = editableObjects.map(mesh => ({
-        type: 'box', // ou récupère le type si tu le stockes
+        type: 'box',
         geometry: {
             type: 'box',
             width: mesh.geometry.parameters.width,
@@ -108,16 +109,28 @@ pane.addButton({ title: 'Exporter en JSON' }).on('click', () => {
             y: mesh.position.y,
             z: mesh.position.z
         }
-        // Ajoute rotation, etc. si besoin
     }));
-
-    // Affiche le JSON dans la console ou dans une popup
     const json = JSON.stringify(exportData, null, 2);
     console.log(json);
-    // Optionnel : copie dans le presse-papier
     navigator.clipboard.writeText(json).then(() => {
         alert('JSON copié dans le presse-papier !');
     });
+});
+
+pane.addButton({ title: 'Sauvegarder la map' }).on('click', () => {
+    fetch('/api/save-map.php', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(mapData, null, 4)
+    })
+        .then(res => res.json())
+        .then(data => {
+            if (data.success) {
+                alert('Map sauvegardée automatiquement !');
+            } else {
+                alert('Erreur : ' + data.message);
+            }
+        });
 });
 
 const raycaster = new THREE.Raycaster();
@@ -138,6 +151,44 @@ renderer.domElement.addEventListener('pointerdown', (event) => {
     }
 });
 
+function removeObject(mesh, mapData, scene, editableObjects) {
+    // Retire le mesh de la scène
+    scene.remove(mesh);
+
+    // Retire du tableau editableObjects
+    const idx = editableObjects.indexOf(mesh);
+    if (idx !== -1) editableObjects.splice(idx, 1);
+
+    // Retire du JSON
+    const jsonRef = mesh.userData.jsonRef;
+    // Parcours récursif pour trouver et supprimer l'objet dans mapData
+    function removeFromList(list) {
+        const i = list.indexOf(jsonRef);
+        if (i !== -1) {
+            list.splice(i, 1);
+            return true;
+        }
+        for (const item of list) {
+            if (item.objects && removeFromList(item.objects)) return true;
+        }
+        return false;
+    }
+    if (mapData.objects && removeFromList(mapData.objects)) return;
+    if (mapData.buildings && removeFromList(mapData.buildings)) return;
+}
+
+function addObjectToBuilding(buildingName, newObj, mapData, scene, editableObjects) {
+    const building = mapData.buildings.find(b => b.name === buildingName);
+    if (!building) return;
+    building.objects.push(newObj);
+
+    // Crée le mesh et ajoute-le à la scène
+    const mesh = createMeshFromJson(newObj);
+    scene.add(mesh);
+    mesh.userData.jsonRef = newObj;
+    editableObjects.push(mesh);
+}
+
 let editPane = null;
 
 function showEditPane(mesh) {
@@ -148,7 +199,7 @@ function showEditPane(mesh) {
     editPane = new Pane({ title: 'Modifier l\'objet' });
 
     editPane.element.style.position = 'fixed';
-    editPane.element.style.top = '230px';
+    editPane.element.style.top = '270px';
     editPane.element.style.right = '0px';
     editPane.element.style.zIndex = '1001';
 
@@ -166,12 +217,21 @@ function showEditPane(mesh) {
     // Position
     editPane.addBinding(params, 'x', { min: -100, max: 100, step: 0.1 }).on('change', ev => {
         mesh.position.x = ev.value;
+        if (mesh.userData?.jsonRef?.position) {
+            mesh.userData.jsonRef.position.x = ev.value;
+        }
     });
     editPane.addBinding(params, 'y', { min: 0, max: 100, step: 0.1 }).on('change', ev => {
         mesh.position.y = ev.value;
+        if (mesh.userData?.jsonRef?.position) {
+            mesh.userData.jsonRef.position.y = ev.value;
+        }
     });
     editPane.addBinding(params, 'z', { min: -100, max: 100, step: 0.1 }).on('change', ev => {
         mesh.position.z = ev.value;
+        if (mesh.userData?.jsonRef?.position) {
+            mesh.userData.jsonRef.position.z = ev.value;
+        }
     });
 
     // Taille (recrée la géométrie à la volée)
@@ -187,7 +247,10 @@ function showEditPane(mesh) {
 
     // Couleur
     editPane.addBinding(params, 'color').on('change', ev => {
-        mesh.material.color.set(ev.value);
+        mesh.material.color.set(ev.values);
+        if (mesh.userData?.jsonRef?.material) {
+            mesh.userData.jsonRef.material.color = ev.value;
+        }
     });
 }
 
@@ -195,6 +258,12 @@ function showEditPane(mesh) {
 function updateMeshGeometry(mesh, params) {
     mesh.geometry.dispose();
     mesh.geometry = new THREE.BoxGeometry(params.width, params.height, params.depth);
+    // Synchroniser les dimensions dans le JSON
+    if (mesh.userData.jsonRef?.geometry) {
+        mesh.userData.jsonRef.geometry.width = params.width;
+        mesh.userData.jsonRef.geometry.height = params.height;
+        mesh.userData.jsonRef.geometry.depth = params.depth;
+    }
 }
 
 // Lumière
@@ -324,7 +393,20 @@ addWallMesh(sceneWidth / 2, 5, 0, 0.5, 10, sceneWidth, 0x3366cc); // est
 fetch('/js/maps/map2.json')
     .then(res => res.json())
     .then(data => {
-        generateMapFromData(scene, colliders, data);
+        mapData = data;
+        // Après avoir chargé mapData
+        function ensureObjectNames(objList) {
+            objList.forEach((obj, i) => {
+                if (!obj.name) obj.name = obj.type + '_' + (i + 1);
+            });
+        }
+        if (mapData.buildings) {
+            mapData.buildings.forEach(building => {
+                if (building.objects) ensureObjectNames(building.objects);
+            });
+        }
+        if (mapData.objects) ensureObjectNames(mapData.objects);
+        generateMapFromData(scene, colliders, data, editableObjects);
 
         // Pour chaque collider, ajoute un body Ammo.js statique
         for (const c of colliders) {
@@ -374,6 +456,7 @@ fetch('/js/maps/map2.json')
         playerBody.setAngularFactor(new Ammo.btVector3(0, 0, 0)); // Pas de rotation
         physicsWorld.addRigidBody(playerBody);
 
+        showAllObjectsEditor(mapData, editableObjects);
         // 6. Lance la boucle d'animation
         animate();
     });
@@ -419,6 +502,156 @@ document.addEventListener('keydown', (e) => {
         updateEditModeUI();
     }
 });
+
+// Fonction pour créer un dossier (folder) pour chaque objet
+function addObjectFolder(parentPane, obj, mesh) {
+    if (!obj.name) obj.name = 'Nouvel objet';
+
+    const folder = parentPane.addFolder({ title: `${obj.type} (${obj.name})` });
+    mesh.folder = folder;
+
+    // --- Binding pour renommer l'objet ---
+    folder.addBinding(obj, 'name').on('change', ev => {
+        folder.title = `${obj.type} (${ev.value})`;
+    });
+
+    // --- Binding pour changer le type ---
+    folder.addBinding(obj, 'type', { options: { box: 'box', sphere: 'sphere', cylinder: 'cylinder' } }).on('change', ev => {
+        updateMeshGeometry(mesh, obj.geometry, ev.value);
+        folder.title = `${ev.value} (${obj.name})`;
+    });
+
+    // Position
+    folder.addBinding(obj.position, 'x', { min: -100, max: 100, step: 0.1 }).on('change', ev => {
+        mesh.position.x = ev.value;
+    });
+    folder.addBinding(obj.position, 'y', { min: 0, max: 100, step: 0.1 }).on('change', ev => {
+        mesh.position.y = ev.value;
+    });
+    folder.addBinding(obj.position, 'z', { min: -100, max: 100, step: 0.1 }).on('change', ev => {
+        mesh.position.z = ev.value;
+    });
+
+    // Taille
+    folder.addBinding(obj.geometry, 'width', { min: 0.1, max: 50, step: 0.1 }).on('change', ev => {
+        updateMeshGeometry(mesh, obj.geometry, obj.type);
+    });
+    folder.addBinding(obj.geometry, 'height', { min: 0.1, max: 50, step: 0.1 }).on('change', ev => {
+        updateMeshGeometry(mesh, obj.geometry, obj.type);
+    });
+    folder.addBinding(obj.geometry, 'depth', { min: 0.1, max: 50, step: 0.1 }).on('change', ev => {
+        updateMeshGeometry(mesh, obj.geometry, obj.type);
+    });
+
+    // Couleur
+    folder.addBinding(obj.material, 'color').on('change', ev => {
+        mesh.material.color.set(ev.value);
+    });
+
+    folder.addButton({ title: '❌ Supprimer cet objet' }).on('click', () => {
+        removeObject(mesh, mapData, scene, editableObjects);
+        showAllObjectsEditor(mapData, editableObjects); // recharge la liste
+    });
+
+
+    // Sous-objets éventuels
+    if (obj.objects && Array.isArray(obj.objects)) {
+        obj.objects.forEach((childObj, idx) => {
+            const childMesh = editableObjects.find(m => m.userData.jsonRef === childObj);
+            if (childMesh) {
+                addObjectFolder(folder, childObj, childMesh);
+            }
+        });
+    }
+}
+
+// Fonction pour générer l'arborescence complète
+function showAllObjectsEditor(mapData, editableObjects) {
+    if (window.globalPane) window.globalPane.dispose();
+    const pane = new Pane({ title: 'Edition de la map' });
+    pane.element.style.position = 'fixed';
+    pane.element.style.top = '60px';
+    pane.element.style.left = '20px';
+    pane.element.style.right = '';
+    pane.element.style.zIndex = '1001';
+    pane.element.style.maxHeight = '80vh';
+    pane.element.style.overflowY = 'auto';
+    window.globalPane = pane;
+
+    // === Bouton placé ici, après la construction complète de l'arborescence ===
+    let allExpanded = false;
+    pane.addButton({ title: '↕️ Tout replier / déplier' }).on('click', () => {
+        allExpanded = !allExpanded;
+
+        editableObjects.forEach((obj) => {
+            if (obj.folder) {
+                obj.folder.expanded = allExpanded;
+            }
+        });
+    });
+
+    // --- Bouton pour ajouter un nouveau bâtiment ---
+    pane.addButton({ title: 'Ajouter un bâtiment' }).on('click', () => {
+        const newBuilding = {
+            name: 'Nouveau bâtiment ' + (mapData.buildings.length + 1),
+            objects: []
+        };
+        mapData.buildings.push(newBuilding);
+        // Recharge l’arborescence pour afficher le nouveau dossier
+        showAllObjectsEditor(mapData, editableObjects);
+    });
+
+    // Pour les objets "hors bâtiment"
+    if (mapData.objects) {
+        mapData.objects.forEach(obj => {
+            const mesh = editableObjects.find(m => m.userData.jsonRef === obj);
+            if (mesh) addObjectFolder(pane, obj, mesh);
+        });
+    }
+
+    // Pour les bâtiments
+    if (mapData.buildings) {
+        mapData.buildings.forEach(building => {
+            const buildingFolder = pane.addFolder({ title: building.name || 'Bâtiment' });
+
+            // --- Binding pour renommer le bâtiment ---
+            buildingFolder.addBinding(building, 'name').on('change', ev => {
+                buildingFolder.title = ev.value; // Met à jour le titre du dossier
+            });
+
+            // --- Bouton pour ajouter un objet dans ce bâtiment ---
+            buildingFolder.addButton({ title: 'Ajouter un objet' }).on('click', () => {
+                // Crée un nouvel objet par défaut
+                const newObj = {
+                    name: 'Nouvel objet',
+                    type: 'box',
+                    geometry: { type: 'box', width: 1, height: 1, depth: 1 },
+                    material: { color: '#ffffff' },
+                    position: { x: 0, y: 0.5, z: 0 }
+                };
+                building.objects.push(newObj);
+
+                // Crée le mesh et ajoute-le à la scène et à editableObjects
+                const mesh = createMeshFromJson(newObj);
+                scene.add(mesh);
+                mesh.userData.jsonRef = newObj;
+                editableObjects.push(mesh);
+
+                // Recharge l’arborescence pour afficher le nouvel objet
+                showAllObjectsEditor(mapData, editableObjects);
+            });
+
+            // Affiche les objets existants
+            if (building.objects) {
+                building.objects.forEach(obj => {
+                    const mesh = editableObjects.find(m => m.userData.jsonRef === obj);
+                    if (mesh) addObjectFolder(buildingFolder, obj, mesh);
+                });
+            }
+        });
+    }
+
+}
 
 function animate() {
     requestAnimationFrame(animate);
@@ -530,8 +763,8 @@ function animate() {
     }
 
     const camCoords = document.getElementById('camera-coords');
-camCoords.textContent =
-    `x: ${camera.position.x.toFixed(2)}  y: ${camera.position.y.toFixed(2)}  z: ${camera.position.z.toFixed(2)}`;
+    camCoords.textContent =
+        `x: ${camera.position.x.toFixed(2)}  y: ${camera.position.y.toFixed(2)}  z: ${camera.position.z.toFixed(2)}`;
 
     renderer.render(scene, camera);
 }
