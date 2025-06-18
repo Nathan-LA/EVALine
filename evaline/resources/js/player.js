@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import Ammo from 'ammo.js';
+import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls.js';
 
 // Paramètres du joueur
 export const playerHitbox = {
@@ -55,90 +56,9 @@ export let jumpsLeft = maxJumps;
  * @param {boolean} params.flyMode - Si le mode vol est activé
  * @param {number} params.delta - Delta time (en secondes)
  */
-export function movePlayer({ keys, camera, playerBody, canJump, jumpSpeed, flyMode, delta }) {
-    let speed = 5;
-    if (keys['shift']) speed = 10;
-
-    if (flyMode) {
-        // Mode vol : déplace la caméra dans l'espace 3D
-        let moveDir = new THREE.Vector3();
-        if (keys['z']) moveDir.z -= 1;
-        if (keys['s']) moveDir.z += 1;
-        if (keys['q']) moveDir.x -= 1;
-        if (keys['d']) moveDir.x += 1;
-        if (keys[' ']) moveDir.y += 1; // Espace pour monter
-        if (keys['ctrl'] || keys['control']) moveDir.y -= 1; // Ctrl pour descendre
-        moveDir.normalize();
-
-        if (moveDir.lengthSq() > 0) {
-            // Repère caméra
-            const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
-            const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
-            const up = new THREE.Vector3(0, 1, 0);
-
-            const move = new THREE.Vector3();
-            move.addScaledVector(forward, moveDir.z);
-            move.addScaledVector(right, moveDir.x);
-            move.addScaledVector(up, moveDir.y);
-
-            camera.position.addScaledVector(move, speed * delta);
-
-            // Synchronise le corps physique du joueur (optionnel)
-            if (playerBody) {
-                playerBody.activate();
-                const tmpTrans = new Ammo.btTransform();
-                playerBody.getMotionState().getWorldTransform(tmpTrans);
-                tmpTrans.setOrigin(new Ammo.btVector3(camera.position.x, camera.position.y, camera.position.z));
-                playerBody.setWorldTransform(tmpTrans);
-                Ammo.destroy(tmpTrans);
-            }
-        }
-        return;
-    }
-
-    // Mode FPS classique (physique)
-    let moveDir = new THREE.Vector3();
-    if (keys['s']) moveDir.z -= 1;
-    if (keys['z']) moveDir.z += 1;
-    if (keys['q']) moveDir.x -= 1;
-    if (keys['d']) moveDir.x += 1;
-    moveDir.normalize();
-
-    // Repère caméra (horizontal)
-    const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion).setY(0).normalize();
-    const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion).setY(0).normalize();
-    const move = new THREE.Vector3();
-    move.addScaledVector(forward, moveDir.z);
-    move.addScaledVector(right, moveDir.x);
-
-    // Applique la vélocité horizontale
-    const velocity = playerBody.getLinearVelocity();
-    if (moveDir.lengthSq() > 0) {
-        playerBody.activate();
-        velocity.setX(move.x * speed);
-        velocity.setZ(move.z * speed);
-        playerBody.setLinearVelocity(velocity);
-    } else if (Math.abs(velocity.x()) > 0.01 || Math.abs(velocity.z()) > 0.01) {
-        playerBody.activate();
-        velocity.setX(0);
-        velocity.setZ(0);
-        playerBody.setLinearVelocity(velocity);
-    }
-
-    // Double saut
-    if (canJump) {
-        jumpsLeft = maxJumps; // Recharge les sauts au sol
-    }
-    if (keys[' '] && jumpsLeft > 0) {
-        playerBody.activate();
-        const v = playerBody.getLinearVelocity();
-        v.setY(jumpSpeed);
-        playerBody.setLinearVelocity(v);
-        jumpsLeft--;
-        keys[' '] = false; // Empêche le saut continu si la touche reste enfoncée
-    }
+export function movePlayer({ keys, camera, playerBody, canJump, jumpSpeed, flyMode, delta, controls }) {
+    
 }
-
 // Gestion des entrées clavier (écouteur d'événements global)
 export function handleKeyDown(e) {
     if (e.key === 'f') {
