@@ -8,10 +8,10 @@ export function generateMapFromData(scene, colliders, mapData, editableObjects =
         for (const tile of mapData.tiles.pattern) {
             const mesh = new THREE.Mesh(
                 new THREE.PlaneGeometry(tileSize, tileSize),
-                new THREE.MeshStandardMaterial({color: tile.color})
+                new THREE.MeshStandardMaterial({ color: tile.color })
             );
             mesh.rotation.x = -Math.PI / 2;
-            mesh.position.set(tile.x + tileSize/2, 0, tile.z + tileSize/2);
+            mesh.position.set(tile.x + tileSize / 2, 0, tile.z + tileSize / 2);
             scene.add(mesh);
         }
     }
@@ -31,15 +31,19 @@ export function generateMapFromData(scene, colliders, mapData, editableObjects =
 
     // Génère les bâtiments
     if (mapData.buildings) {
-    for (const building of mapData.buildings) {
-        if (building.objects) {
-            for (const obj of building.objects) {
-                const mesh = createMeshFromJson(obj);
-                scene.add(mesh);
-                mesh.userData.jsonRef = obj;
-                editableObjects.push(mesh);
+        for (const building of mapData.buildings) {
+            if (building.objects) {
+                for (const obj of building.objects) {
+                    const mesh = createMeshFromJson(obj);
+                    scene.add(mesh);
+                    mesh.userData.jsonRef = obj;
+                    colliders.push({
+                        mesh: mesh,
+                        box: mesh.geometry.boundingBox.clone().applyMatrix4(mesh.matrixWorld)
+                    });
+                    editableObjects.push(mesh);
+                }
             }
         }
     }
-}
 }

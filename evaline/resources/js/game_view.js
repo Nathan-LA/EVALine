@@ -3,7 +3,7 @@ import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockCont
 import { generateMapFromData } from './mapGenerator.js';
 import { Pane } from 'tweakpane';
 import Ammo from 'ammo.js';
-import { createMeshFromJson, updateMeshColor, updateMeshGeometry, removeObject } from './objects.js';
+import { updateMeshColor, updateMeshGeometry, removeObject, createMeshFromJson } from './objects.js';
 
 // 1. Déclare la hitbox du joueur en haut du fichier
 const playerHitbox = {
