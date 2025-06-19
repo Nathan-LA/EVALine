@@ -1040,6 +1040,24 @@
                         "y": 2.4000000000000004,
                         "z": 62.5
                     }
+                },
+                {
+                    "name": "Nouvel objet",
+                    "type": "box",
+                    "geometry": {
+                        "type": "box",
+                        "width": 1,
+                        "height": 1,
+                        "depth": 1
+                    },
+                    "material": {
+                        "color": "#ffff00"
+                    },
+                    "position": {
+                        "x": 0,
+                        "y": 0.5,
+                        "z": 0
+                    }
                 }
             ]
         }
