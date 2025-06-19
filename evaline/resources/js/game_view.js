@@ -5,28 +5,25 @@ import { Pane } from 'tweakpane';
 import Ammo from 'ammo.js';
 import { showEditPane, showAllObjectsEditor } from './editor.js';
 import { movePlayer, playerHitbox, createPlayerBody } from './player.js';
+import { addWall, createColliderFromMesh } from './physics.js';
+import { createScene } from './scene.js';
+import { keys, editMode, initKeyboardControls, initPointerLock } from './core/keyboard.js';
 
 let mapData = null;
 
 const camCoords = document.getElementById('camera-coords');
 
-let physicsWorld, tmpTrans, playerBody;
+let playerBody;
 let objectsAmmo = []; // Pour stocker les bodies Ammo.js des objets
 
 const editableObjects = []; // Ajoute chaque mesh créé ici
 
 // Initialisation de la scène, caméra et renderer
-const scene = new THREE.Scene();
-const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setClearColor(0x222222);
-document.getElementById('three-container').appendChild(renderer.domElement);
+
+const { scene, camera, renderer } = createScene('three-container');
 
 const sceneWidth = 150;
 const sceneLength = 150;
-
-let flyMode = true; // Passe à false pour désactiver le vol
 
 // Gridhelper pour visualiser le sol
 const gridHelper = new THREE.GridHelper(sceneWidth, sceneWidth / 2, 0x888888, 0x444444);
@@ -216,7 +213,6 @@ controls.addEventListener('unlock', () => {
 });
 
 // Gestion des touches pressées pour déplacement FPS
-const keys = {};
 document.addEventListener('keydown', e => { keys[e.key.toLowerCase()] = true; });
 document.addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
 
@@ -227,13 +223,8 @@ const maxJumps = 2;
 // --- Ammo.JS PHYSICS INITIALISATION ---
 let colliders = [];
 // 1. Monde physique
-const collisionConfiguration = new Ammo.btDefaultCollisionConfiguration();
-const dispatcher = new Ammo.btCollisionDispatcher(collisionConfiguration);
-const broadphase = new Ammo.btDbvtBroadphase();
-const solver = new Ammo.btSequentialImpulseConstraintSolver();
-physicsWorld = new Ammo.btDiscreteDynamicsWorld(dispatcher, broadphase, solver, collisionConfiguration);
+const { physicsWorld, tmpTrans } = initPhysicsWorld(Ammo);
 physicsWorld.setGravity(new Ammo.btVector3(0, -15, 0));
-tmpTrans = new Ammo.btTransform();
 
 // 2. Sol physique
 const groundShape = new Ammo.btBoxShape(new Ammo.btVector3(sceneWidth / 2, 1, sceneLength / 2));
@@ -247,25 +238,11 @@ const groundRbInfo = new Ammo.btRigidBodyConstructionInfo(groundMass, groundMoti
 const groundBody = new Ammo.btRigidBody(groundRbInfo);
 physicsWorld.addRigidBody(groundBody);
 
-// 3. Murs physiques (mêmes dimensions que tes murs Three.js)
-function addWall(x, y, z, sx, sy, sz) {
-    const shape = new Ammo.btBoxShape(new Ammo.btVector3(sx / 2, sy / 2, sz / 2));
-    const transform = new Ammo.btTransform();
-    transform.setIdentity();
-    transform.setOrigin(new Ammo.btVector3(x, y, z));
-    const mass = 0;
-    const localInertia = new Ammo.btVector3(0, 0, 0);
-    const motionState = new Ammo.btDefaultMotionState(transform);
-    const rbInfo = new Ammo.btRigidBodyConstructionInfo(mass, motionState, shape, localInertia);
-    const body = new Ammo.btRigidBody(rbInfo);
-    physicsWorld.addRigidBody(body);
-}
-
 // Ajoute les 4 murs
-addWall(0, 5, -sceneLength / 2, sceneLength, 10, 0.5); // nord
-addWall(0, 5, sceneLength / 2, sceneLength, 10, 0.5); // sud
-addWall(-sceneWidth / 2, 5, 0, 0.5, 10, sceneWidth); // ouest
-addWall(sceneWidth / 2, 5, 0, 0.5, 10, sceneWidth); // est
+addWall(Ammo, { x: 0, y: 5, z: -sceneLength / 2, width: sceneLength, height: 10, depth: 0.5 }); // nord
+addWall(Ammo, { x: 0, y: 5, z: sceneLength / 2, width: sceneLength, height: 10, depth: 0.5 }); // sud
+addWall(Ammo, { x: -sceneWidth / 2, y: 5, z: 0, width: 0.5, height: 10, depth: sceneWidth }); // ouest
+addWall(Ammo, { x: sceneWidth / 2, y: 5, z: 0, width: 0.5, height: 10, depth: sceneWidth }); // est
 
 // Mur visuel (Three.js)
 function addWallMesh(x, y, z, sx, sy, sz, color = 0x888888) {
@@ -284,7 +261,7 @@ addWallMesh(-sceneWidth / 2, 5, 0, 0.5, 10, sceneWidth, 0x3366cc); // ouest
 addWallMesh(sceneWidth / 2, 5, 0, 0.5, 10, sceneWidth, 0x3366cc); // est
 
 // 4. Génère la carte et ajoute les objets physiques
-fetch('/js/maps/map2.json')
+fetch('../resources/maps/map2.json')
     .then(res => res.json())
     .then(data => {
         mapData = data;
@@ -305,32 +282,7 @@ fetch('/js/maps/map2.json')
         // Pour chaque collider, ajoute un body Ammo.js statique
         for (const c of colliders) {
             const mesh = c.mesh;
-            mesh.geometry.computeBoundingBox();
-            mesh.updateMatrixWorld(true);
-
-            // Récupère la taille et le centre dans le repère monde
-            const size = new THREE.Vector3();
-            mesh.geometry.boundingBox.getSize(size);
-            const center = new THREE.Vector3();
-            mesh.geometry.boundingBox.getCenter(center);
-            mesh.localToWorld(center);
-
-            // Crée la forme Ammo.js
-            const shape = new Ammo.btBoxShape(new Ammo.btVector3(size.x / 2, size.y / 2, size.z / 2));
-            const transform = new Ammo.btTransform();
-            transform.setIdentity();
-            transform.setOrigin(new Ammo.btVector3(center.x, center.y, center.z));
-
-            // Applique la rotation du mesh à la physique
-            const quaternion = mesh.getWorldQuaternion(new THREE.Quaternion());
-            transform.setRotation(new Ammo.btQuaternion(quaternion.x, quaternion.y, quaternion.z, quaternion.w));
-
-            const mass = 0;
-            const localInertia = new Ammo.btVector3(0, 0, 0);
-            const motionState = new Ammo.btDefaultMotionState(transform);
-            const rbInfo = new Ammo.btRigidBodyConstructionInfo(mass, motionState, shape, localInertia);
-            const body = new Ammo.btRigidBody(rbInfo);
-            physicsWorld.addRigidBody(body);
+            const body = createColliderFromMesh(mesh, Ammo);
             objectsAmmo.push(body);
         }
 
@@ -350,8 +302,6 @@ window.addEventListener('resize', () => {
     renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
-let editMode = false;
-
 function updateEditModeUI() {
     if (editMode) {
         pane.element.style.opacity = '1';
@@ -363,28 +313,8 @@ function updateEditModeUI() {
 }
 
 // --- GESTION DU VOL ---
-document.addEventListener('keydown', (e) => {
-    if (e.key === 'f') {
-        flyMode = !flyMode;
-        if (flyMode) {
-            // Active le vol : place le joueur à une hauteur sûre
-            playerBody.getMotionState().getWorldTransform(tmpTrans);
-            const pos = tmpTrans.getOrigin();
-            pos.setY(10);
-            tmpTrans.setOrigin(pos);
-            playerBody.setWorldTransform(tmpTrans);
-        }
-    }
-    if (e.key.toLowerCase() === 'e') {
-        editMode = !editMode;
-        if (editMode) {
-            controls.unlock(); // Désactive le contrôle FPS, souris libre pour Tweakpane
-        } else {
-            controls.lock(); // Reprend le contrôle FPS
-        }
-        updateEditModeUI();
-    }
-});
+initPointerLock(controls, blocker);
+initKeyboardControls();
 
 const playerState = {
     jumpsLeft: maxJumps,
@@ -407,11 +337,9 @@ function animate() {
         let speed = 5;
 
         movePlayer({
-            keys,
             camera,
             playerBody,
             jumpSpeed,
-            flyMode,
             delta,
             controls,
             speed,

@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import Ammo from 'ammo.js';
+import { flyMode, keys } from './controls.js';
 
 // Paramètres du joueur
 export const playerHitbox = {
@@ -34,10 +35,10 @@ export function createPlayerBody(Ammo, startPosition = { x: 0, y: playerHitbox.h
 }
 
 // Synchronisation caméra <-> corps physique du joueur
-export function syncCameraToPlayer(camera, playerBody, tmpTrans, playerHitbox) {
+export function syncCameraToPlayer(camera, playerBody, tmpTrans) {
     playerBody.getMotionState().getWorldTransform(tmpTrans);
-    tmpTrans.setOrigin(new Ammo.btVector3(camera.position.x, camera.position.y, camera.position.z));
-    playerBody.setWorldTransform(tmpTrans);
+    const pos = tmpTrans.getOrigin();
+    camera.position.set(pos.x(), pos.y() + playerHitbox.height / 2, pos.z());
 }
 
 // Nombre maximum de sauts (1 = simple saut, 2 = double saut)
@@ -56,11 +57,9 @@ export let jumpsLeft = maxJumps;
  * @param {number} params.delta - Delta time (en secondes)
  */
 export function movePlayer({
-    keys,
     camera,
     playerBody,
     jumpSpeed,
-    flyMode,
     delta,
     controls,
     speed,
@@ -96,11 +95,11 @@ export function movePlayer({
             camera.position.addScaledVector(move, speed * delta);
             // Optionnel : synchronise le corps physique du joueur
             if (playerBody) {
-                syncCameraToPlayer(camera, playerBody, tmpTrans, playerHitbox);
+                syncCameraToPlayer(camera, playerBody, tmpTrans);
             }
         }
     } else {
-        // ... ton code habituel de déplacement physique ...
+        // Mode FPS : utilise le corps physique pour le mouvement
         let moveDir = new THREE.Vector3();
         if (controls.isLocked) {
             if (keys['s']) moveDir.z -= 1;
@@ -142,10 +141,8 @@ export function movePlayer({
 
         }
 
-        // --- Synchronisation caméra <-> corps physique ---
-        playerBody.getMotionState().getWorldTransform(tmpTrans);
-        const pos = tmpTrans.getOrigin();
-        camera.position.set(pos.x(), pos.y() + playerHitbox.height / 2, pos.z());
+        // Synchronisation de la caméra avec le corps physique du joueur
+        syncCameraToPlayer(camera, playerBody, tmpTrans);
 
         // --- Gestion du saut (détection du sol) ---
         // Raycast Ammo.js vers le bas pour savoir si on touche le sol
