@@ -57,6 +57,7 @@ export function updateMeshColor(mesh, color) {
     mesh.material.color.set(color);
 }
 
+// Supprime un mesh de la scène, du tableau editableObjects et du JSON
 export function removeObject(mesh, mapData, scene, editableObjects) {
     // Retire le mesh de la scène
     scene.remove(mesh);

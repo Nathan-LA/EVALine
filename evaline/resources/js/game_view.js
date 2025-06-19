@@ -3,16 +3,12 @@ import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockCont
 import { generateMapFromData } from './mapGenerator.js';
 import { Pane } from 'tweakpane';
 import Ammo from 'ammo.js';
-import { updateMeshColor, updateMeshGeometry, removeObject, createMeshFromJson } from './objects.js';
 import { showEditPane, showAllObjectsEditor } from './editor.js';
-
-// 1. Déclare la hitbox du joueur en haut du fichier
-const playerHitbox = {
-    radius: 0.5,
-    height: 1.8
-};
+import { movePlayer, playerHitbox, createPlayerBody } from './player.js';
 
 let mapData = null;
+
+const camCoords = document.getElementById('camera-coords');
 
 let physicsWorld, tmpTrans, playerBody;
 let objectsAmmo = []; // Pour stocker les bodies Ammo.js des objets
@@ -165,8 +161,6 @@ renderer.domElement.addEventListener('pointerdown', (event) => {
     editableObjects.push(mesh);
 }*/
 
-let editPane = null;
-
 // Lumière
 const light = new THREE.DirectionalLight(0xffffff, 1);
 light.position.set(10, 20, 10);
@@ -227,9 +221,7 @@ document.addEventListener('keydown', e => { keys[e.key.toLowerCase()] = true; })
 document.addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
 
 let lastTime = performance.now();
-let canJump = false;
 const jumpSpeed = 8; // Vitesse de saut
-let jumpsLeft = 2; // 2 sauts autorisés (sol + 1 en l'air)
 const maxJumps = 2;
 
 // --- Ammo.JS PHYSICS INITIALISATION ---
@@ -268,6 +260,7 @@ function addWall(x, y, z, sx, sy, sz) {
     const body = new Ammo.btRigidBody(rbInfo);
     physicsWorld.addRigidBody(body);
 }
+
 // Ajoute les 4 murs
 addWall(0, 5, -sceneLength / 2, sceneLength, 10, 0.5); // nord
 addWall(0, 5, sceneLength / 2, sceneLength, 10, 0.5); // sud
@@ -342,18 +335,7 @@ fetch('/js/maps/map2.json')
         }
 
         // 5. Ajoute le joueur (capsule)
-        const playerRadius = playerHitbox.radius;
-        const playerHeight = playerHitbox.height;
-        const playerShape = new Ammo.btCapsuleShape(playerRadius, playerHeight - 2 * playerRadius);
-        const playerTransform = new Ammo.btTransform();
-        playerTransform.setIdentity();
-        playerTransform.setOrigin(new Ammo.btVector3(0, playerHeight / 2 + 2, 0));
-        const playerMass = 1;
-        const playerInertia = new Ammo.btVector3(0, 0, 0);
-        playerShape.calculateLocalInertia(playerMass, playerInertia);
-        const playerMotionState = new Ammo.btDefaultMotionState(playerTransform);
-        const playerRbInfo = new Ammo.btRigidBodyConstructionInfo(playerMass, playerMotionState, playerShape, playerInertia);
-        playerBody = new Ammo.btRigidBody(playerRbInfo);
+        playerBody = createPlayerBody(Ammo, { x: 0, y: playerHitbox.height / 2 + 2, z: 0 });
         playerBody.setAngularFactor(new Ammo.btVector3(0, 0, 0)); // Pas de rotation
         physicsWorld.addRigidBody(playerBody);
 
@@ -404,6 +386,11 @@ document.addEventListener('keydown', (e) => {
     }
 });
 
+const playerState = {
+    jumpsLeft: maxJumps,
+    canJump: false
+};
+
 // --- ANIMATION ---
 function animate() {
     requestAnimationFrame(animate);
@@ -418,105 +405,28 @@ function animate() {
 
         // --- Contrôles FPS ---
         let speed = 5;
-        if (keys['shift']) speed = 10;
 
-        if (flyMode) {
-            // Mode vol : déplace la caméra directement dans l'espace 3D
-            let moveDir = new THREE.Vector3();
-            if (controls.isLocked) {
-                if (keys['s']) moveDir.z -= 1;
-                if (keys['z']) moveDir.z += 1;
-                if (keys['q']) moveDir.x -= 1;
-                if (keys['d']) moveDir.x += 1;
-                if (keys[' ']) moveDir.y += 1; // Espace pour monter
-                moveDir.normalize();
-
-                // Repère caméra
-                const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
-                const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
-                const up = new THREE.Vector3(0, 1, 0);
-
-                const move = new THREE.Vector3();
-                move.addScaledVector(forward, moveDir.z);
-                move.addScaledVector(right, moveDir.x);
-                move.addScaledVector(up, moveDir.y);
-
-                camera.position.addScaledVector(move, speed * delta);
-                // Optionnel : synchronise le corps physique du joueur
-                if (playerBody) {
-                    playerBody.getMotionState().getWorldTransform(tmpTrans);
-                    tmpTrans.setOrigin(new Ammo.btVector3(camera.position.x, camera.position.y, camera.position.z));
-                    playerBody.setWorldTransform(tmpTrans);
-                }
-            }
-        } else {
-            // ... ton code habituel de déplacement physique ...
-            let moveDir = new THREE.Vector3();
-            if (controls.isLocked) {
-                if (keys['s']) moveDir.z -= 1;
-                if (keys['z']) moveDir.z += 1;
-                if (keys['q']) moveDir.x -= 1;
-                if (keys['d']) moveDir.x += 1;
-                moveDir.normalize();
-
-                // Repère caméra
-                const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion).setY(0).normalize();
-                const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion).setY(0).normalize();
-                const move = new THREE.Vector3();
-                move.addScaledVector(forward, moveDir.z);
-                move.addScaledVector(right, moveDir.x);
-
-                // Applique la vélocité horizontale
-                const velocity = playerBody.getLinearVelocity();
-                if (moveDir.lengthSq() > 0) {
-                    playerBody.activate(); // <-- Réveille le corps physique
-                    velocity.setX(move.x * speed);
-                    velocity.setZ(move.z * speed);
-                    playerBody.setLinearVelocity(velocity);
-                } else if (Math.abs(velocity.x()) > 0.01 || Math.abs(velocity.z()) > 0.01) {
-                    playerBody.activate(); // <-- Réveille aussi si on stoppe net
-                    velocity.setX(0);
-                    velocity.setZ(0);
-                    playerBody.setLinearVelocity(velocity);
-                }
-
-                // Saut
-                if (keys[' '] && jumpsLeft > 0) {
-                    playerBody.activate(); // <-- Réveille le corps physique
-                    const v = playerBody.getLinearVelocity();
-                    v.setY(jumpSpeed);
-                    playerBody.setLinearVelocity(v);
-                    jumpsLeft--;
-                    keys[' '] = false;
-                }
-            }
-
-            // --- Synchronisation caméra <-> corps physique ---
-            playerBody.getMotionState().getWorldTransform(tmpTrans);
-            const pos = tmpTrans.getOrigin();
-            camera.position.set(pos.x(), pos.y() + playerHitbox.height / 2, pos.z());
-
-            // --- Gestion du saut (détection du sol) ---
-            // Raycast Ammo.js vers le bas pour savoir si on touche le sol
-            const rayStart = new Ammo.btVector3(pos.x(), pos.y(), pos.z());
-            const rayEnd = new Ammo.btVector3(pos.x(), pos.y() - playerHitbox.height / 2 - 0.2, pos.z());
-            const rayCallback = new Ammo.ClosestRayResultCallback(rayStart, rayEnd);
-            physicsWorld.rayTest(rayStart, rayEnd, rayCallback);
-            canJump = rayCallback.hasHit();
-
-            if (canJump) {
-                jumpsLeft = maxJumps;
-            }
-
-            Ammo.destroy(rayStart);
-            Ammo.destroy(rayEnd);
-            Ammo.destroy(rayCallback);
-        }
+        movePlayer({
+            keys,
+            camera,
+            playerBody,
+            jumpSpeed,
+            flyMode,
+            delta,
+            controls,
+            speed,
+            maxJumps,
+            playerHitbox,
+            tmpTrans,
+            physicsWorld,
+            playerState
+        })
     }
-
-    const camCoords = document.getElementById('camera-coords');
-    camCoords.textContent =
-        `x: ${camera.position.x.toFixed(2)}  y: ${camera.position.y.toFixed(2)}  z: ${camera.position.z.toFixed(2)}`;
 
     renderer.render(scene, camera);
 }
+
+setInterval(() => {
+    camCoords.textContent =
+        `x: ${camera.position.x.toFixed(2)}  y: ${camera.position.y.toFixed(2)}  z: ${camera.position.z.toFixed(2)}`;
+}, 100);

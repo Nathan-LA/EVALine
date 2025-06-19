@@ -1,8 +1,10 @@
 import { Pane } from 'tweakpane';
 import * as THREE from 'three';
+import { createMeshFromJson, updateMeshGeometry, removeObject } from './objects.js';
 
-let editPane = null;
+let editPane = null; // Panneau d'édition global
 
+// Ajoute un dossier d'édition pour un objet
 function addObjectFolder(parentPane, obj, mesh) {
     if (!obj.name) obj.name = 'Nouvel objet';
 
@@ -137,12 +139,6 @@ export function showEditPane(mesh) {
     });
 }
 
-// Fonction utilitaire pour changer la géométrie du mesh
-function updateMeshGeometry(mesh, params) {
-    mesh.geometry.dispose();
-    mesh.geometry = new THREE.BoxGeometry(params.width, params.height, params.depth);
-}
-
 // Bouton d’export JSON
 export function addExportButton(pane, mapData) {
     pane.addButton({ title: 'Exporter la map JSON' }).on('click', () => {
@@ -154,6 +150,7 @@ export function addExportButton(pane, mapData) {
     });
 }
 
+// Panneau d’édition de tous les objets
 export function showAllObjectsEditor(mapData, editableObjects) {
     if (window.globalPane) window.globalPane.dispose();
     const pane = new Pane({ title: 'Edition de la map' });

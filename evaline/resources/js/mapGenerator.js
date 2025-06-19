@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { createMeshFromJson } from './objects.js';
 
+// Génère la carte à partir des données JSON
 export function generateMapFromData(scene, colliders, mapData, editableObjects = []) {
     // Génère le sol (pattern)
     if (mapData.tiles) {
